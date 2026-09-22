@@ -86,11 +86,14 @@ function emitBooleanValue(node: AnnotatedNode, gen: Generator, output: Instructi
 
 function emitBoolean(node: AnnotatedNode, gen: Generator, output: Instruction[], yes: string, no: string) {
   if (node.kind === 'Group') return emitBoolean(node.children[0], gen, output, yes, no)
+  if (node.kind === 'Boolean') {
+    output.push(instruction('goto', [node.value === 'true' ? yes : no]))
+    return
+  }
   if (node.kind === 'Unary' && node.value === '!') return emitBoolean(node.children[0], gen, output, no, yes)
   if (node.value === '&&') { const next = gen.nextLabel(); emitBoolean(node.children[0], gen, output, next, no); output.push(instruction('label', [], undefined, next)); return emitBoolean(node.children[1], gen, output, yes, no) }
   if (node.value === '||') { const next = gen.nextLabel(); emitBoolean(node.children[0], gen, output, yes, next); output.push(instruction('label', [], undefined, next)); return emitBoolean(node.children[1], gen, output, yes, no) }
   const left = emitValue(node.children[0], gen, output); const right = emitValue(node.children[1], gen, output)
-  if (node.kind === 'Boolean') { output.push(instruction('if', [node.value === 'true' ? 'true' : 'false', '!=', '0', yes]), instruction('goto', [no])); return }
   output.push(instruction('if', [left, node.value!, right, yes]), instruction('goto', [no]))
 }
 
