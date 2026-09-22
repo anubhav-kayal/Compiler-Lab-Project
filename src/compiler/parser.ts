@@ -63,8 +63,12 @@ export class Parser {
   private node(kind: string, value: string | undefined, start: number, end: number, children: AnnotatedNode[] = []): AnnotatedNode {
     return { id: this.nodeId++, kind, value, type: 'error', start, end, children, code: [] }
   }
-  private peek(): Token { return this.tokens[this.index] }
-  private previous(): Token { return this.tokens[Math.max(0, this.index - 1)] }
-  private advance(): Token { return this.tokens[this.index++] }
+  private peek(): Token { return this.tokens[Math.min(this.index, this.tokens.length - 1)] }
+  private previous(): Token { return this.tokens[Math.max(0, Math.min(this.index - 1, this.tokens.length - 1))] }
+  private advance(): Token {
+    const token = this.peek()
+    if (token.kind !== 'eof') this.index++
+    return token
+  }
   private error(message: string, token: Token): void { this.diagnostics.push({ message, start: token.start, end: token.end, severity: 'error' }) }
 }

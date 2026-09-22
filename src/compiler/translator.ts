@@ -33,7 +33,10 @@ export function translate(source: string): TranslationResult {
 
 function analyze(node: AnnotatedNode, diagnostics: Diagnostic[]): ValueType {
   node.children.forEach(child => analyze(child, diagnostics))
-  if (node.kind === 'Number' || node.kind === 'Identifier') node.type = 'int'
+  if (node.kind === 'Error') {
+    node.type = 'error'
+    diagnostics.push({ message: 'Incomplete or invalid expression.', start: node.start, end: node.end, severity: 'error' })
+  } else if (node.kind === 'Number' || node.kind === 'Identifier') node.type = 'int'
   else if (node.kind === 'Boolean') node.type = 'bool'
   else if (node.kind === 'Group') node.type = node.children[0].type
   else if (node.kind === 'Unary') {

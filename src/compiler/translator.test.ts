@@ -28,4 +28,10 @@ describe('syntax-directed translation', () => {
     expect(result.success).toBe(false)
     expect(result.diagnostics.some(d => d.message.includes(')'))).toBe(true)
   })
+
+  it('does not crash while an expression is incomplete', () => {
+    const result = translate('a +')
+    expect(result.success).toBe(false)
+    expect(result.diagnostics.length).toBeGreaterThan(0)
+  })
 })
