@@ -64,7 +64,7 @@ Conditions are compiled with inherited true and false labels, so `&&` and `||` s
 
 ## Optimizer
 
-`src/compiler/optimize.ts` repeats these passes until nothing changes: constant propagation for single-definition temporaries, constant folding (division by zero is left alone), merging `t = a op b; x = t` into `x = a op b`, branch inversion, jump threading, removal of jumps to the next line, unreachable code and unused labels. `src/compiler/interpret.ts` runs three-address code, and the tests check that every built-in program gives the same variables before and after optimizing.
+`src/compiler/optimize.ts` repeats these passes until nothing changes: constant propagation for single-definition temporaries, constant folding (division by zero is left alone), merging `t = a op b; x = t` into `x = a op b`, branch inversion, jump threading, removal of jumps to the next line, unreachable code and unused labels. `src/compiler/interpret.ts` runs three-address code. Integers are 32-bit two's complement in both the folder and the interpreter, so folding at compile time matches running the code. The tests check that every built-in program, and 1000 seeded random programs from `src/compiler/fuzz.ts`, give the same variables before and after optimizing.
 
 ## Architecture
 
