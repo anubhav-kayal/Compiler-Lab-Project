@@ -69,6 +69,12 @@ describe('optimizer', () => {
     expect(result.optimizedCode).toContain('4 / 0')
   })
 
+  it('folds with 32-bit wraparound, like the interpreter', () => {
+    const result = translateProgram('a = 2147483647 + 1; b = 65536 * 65536;')
+    expect(result.optimizedCode).toBe('a = -2147483648\nb = 0')
+    expect(run(result.instructions).variables).toEqual({ a: -2147483648, b: 0 })
+  })
+
   it('does not change a program that has nothing to remove', () => {
     const once = optimize(translateProgram('x = a + b;').instructions)
     expect(optimize(once)).toEqual(once)

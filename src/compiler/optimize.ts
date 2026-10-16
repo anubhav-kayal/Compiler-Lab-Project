@@ -4,13 +4,16 @@ import type { Instruction } from './types'
 const inverse: Record<string, string> = { '<': '>=', '>=': '<', '>': '<=', '<=': '>', '==': '!=', '!=': '==' }
 const isLiteral = (value: string) => /^-?\d+$/.test(value)
 
+/** Integers are 32-bit two's complement, so folding at compile time matches running the code. */
+export const toInt = (value: number) => value | 0
+
 export function evaluateBinary(op: string, a: number, b: number): number | undefined {
   switch (op) {
-    case '+': return a + b
-    case '-': return a - b
-    case '*': return a * b
-    case '/': return b === 0 ? undefined : Math.trunc(a / b)
-    case '%': return b === 0 ? undefined : a % b
+    case '+': return toInt(a + b)
+    case '-': return toInt(a - b)
+    case '*': return Math.imul(a, b)
+    case '/': return b === 0 ? undefined : toInt(Math.trunc(a / b))
+    case '%': return b === 0 ? undefined : toInt(a % b)
     case '<': return Number(a < b)
     case '<=': return Number(a <= b)
     case '>': return Number(a > b)
@@ -50,7 +53,7 @@ function propagateTemps(code: Instruction[]): Instruction[] {
 function foldConstants(code: Instruction[]): Instruction[] {
   const out: Instruction[] = []
   for (const item of code) {
-    if (item.op === 'neg' && isLiteral(item.args[0])) out.push(instruction('=', [String(-Number(item.args[0]))], item.result))
+    if (item.op === 'neg' && isLiteral(item.args[0])) out.push(instruction('=', [String(toInt(-Number(item.args[0])))], item.result))
     else if (item.result && item.args.length === 2 && !['label', 'goto', 'if'].includes(item.op) && isLiteral(item.args[0]) && isLiteral(item.args[1])) {
       const value = evaluateBinary(item.op, Number(item.args[0]), Number(item.args[1]))
       out.push(value === undefined ? item : instruction('=', [String(value)], item.result))
