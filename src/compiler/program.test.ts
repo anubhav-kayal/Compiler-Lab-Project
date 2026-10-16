@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { run } from './interpret'
-import { optimize } from './optimize'
+import { optimize, optimizeWithStats } from './optimize'
 import { translateProgram } from './program'
 import { samplePrograms } from './programs'
 
@@ -73,6 +73,16 @@ describe('optimizer', () => {
     const result = translateProgram('a = 2147483647 + 1; b = 65536 * 65536;')
     expect(result.optimizedCode).toBe('a = -2147483648\nb = 0')
     expect(run(result.instructions).variables).toEqual({ a: -2147483648, b: 0 })
+  })
+
+  it('stays correct when any single pass is switched off', () => {
+    for (const sample of samplePrograms) {
+      const result = translateProgram(sample.source)
+      for (const skip of ['propagateTemps', 'foldConstants', 'mergeCopies', 'invertBranches', 'threadJumps', 'removeDeadJumps', 'removeUnreachable', 'removeUnusedLabels'] as const) {
+        const reduced = optimizeWithStats(result.instructions, [skip]).code
+        for (const input of sample.inputs) expect(run(reduced, input).variables).toEqual(run(result.instructions, input).variables)
+      }
+    }
   })
 
   it('does not change a program that has nothing to remove', () => {

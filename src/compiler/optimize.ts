@@ -23,17 +23,28 @@ export function evaluateBinary(op: string, a: number, b: number): number | undef
   }
 }
 
-/** Runs the passes below until none of them changes the code. */
-export function optimize(code: Instruction[]): Instruction[] {
+export const passes = {
+  propagateTemps, foldConstants, mergeCopies, invertBranches, threadJumps, removeDeadJumps, removeUnreachable, removeUnusedLabels,
+}
+export type PassName = keyof typeof passes
+
+/** Runs the passes below until none of them changes the code. `skip` turns passes off, which is used to measure what each one contributes. */
+export function optimizeWithStats(code: Instruction[], skip: PassName[] = []): { code: Instruction[]; rounds: number } {
+  const active = (Object.keys(passes) as PassName[]).filter(name => !skip.includes(name)).map(name => passes[name])
   let current = code.map(item => ({ ...item, args: [...item.args] }))
-  for (let round = 0; round < 20; round++) {
-    const next = [propagateTemps, foldConstants, mergeCopies, invertBranches, threadJumps, removeDeadJumps, removeUnreachable, removeUnusedLabels]
-      .reduce((acc, pass) => pass(acc), current)
+  let rounds = 0
+  for (; rounds < 20;) {
+    rounds++
+    const next = active.reduce((acc, pass) => pass(acc), current)
     const same = JSON.stringify(next) === JSON.stringify(current)
     current = next
     if (same) break
   }
-  return current
+  return { code: current, rounds }
+}
+
+export function optimize(code: Instruction[]): Instruction[] {
+  return optimizeWithStats(code).code
 }
 
 const isTemp = (name?: string) => !!name && /^t\d+$/.test(name)
