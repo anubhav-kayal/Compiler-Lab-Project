@@ -7,8 +7,10 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "test": "vitest run",
-    "translate": "tsx scripts/translate.ts",
-    "preview": "vite preview"
+    "translate": "node bin/sdt.mjs",
+    "benchmark": "node bin/sdt.mjs bench",
+    "preview": "vite preview",
+    "sdt": "node bin/sdt.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
@@ -24,5 +26,8 @@
     "vitest": "latest",
     "tsx": "latest",
     "jsdom": "latest"
+  },
+  "bin": {
+    "sdt": "bin/sdt.mjs"
   }
 }
