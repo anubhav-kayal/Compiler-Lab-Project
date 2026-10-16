@@ -2,14 +2,14 @@ import { tokenize } from './lexer'
 import { Parser } from './parser'
 import type { AnnotatedNode, Diagnostic, Instruction, TranslationResult, ValueType } from './types'
 
-class Generator {
+export class Generator {
   temp = 0
   label = 0
   nextTemp() { return `t${this.temp++}` }
   nextLabel() { return `L${this.label++}` }
 }
 
-function instruction(op: string, args: string[], result?: string, label?: string): Instruction {
+export function instruction(op: string, args: string[], result?: string, label?: string): Instruction {
   return { op, args, result, label }
 }
 
@@ -31,11 +31,19 @@ export function translate(source: string): TranslationResult {
   return { success: true, source, tokens: lexed.tokens, tree, instructions, formattedCode: formatCode(instructions), diagnostics }
 }
 
-function analyze(node: AnnotatedNode, diagnostics: Diagnostic[]): ValueType {
-  node.children.forEach(child => analyze(child, diagnostics))
+export type SymbolTable = { types: Map<string, ValueType>; defined: Set<string> }
+
+export function analyze(node: AnnotatedNode, diagnostics: Diagnostic[], symbols?: SymbolTable): ValueType {
+  node.children.forEach(child => analyze(child, diagnostics, symbols))
   if (node.kind === 'Error') {
     node.type = 'error'
     diagnostics.push({ message: 'Incomplete or invalid expression.', start: node.start, end: node.end, severity: 'error' })
+  } else if (node.kind === 'Identifier' && symbols) {
+    node.type = symbols.types.get(node.value!) ?? 'int'
+    if (!symbols.defined.has(node.value!)) {
+      diagnostics.push({ message: `“${node.value}” is read before it is assigned; it is treated as an integer input.`, start: node.start, end: node.end, severity: 'warning' })
+      symbols.defined.add(node.value!)
+    }
   } else if (node.kind === 'Number' || node.kind === 'Identifier') node.type = 'int'
   else if (node.kind === 'Boolean') node.type = 'bool'
   else if (node.kind === 'Group') node.type = node.children[0].type
@@ -66,7 +74,8 @@ function typeError(diagnostics: Diagnostic[], node: AnnotatedNode, message: stri
   node.type = 'error'
 }
 
-function emitValue(node: AnnotatedNode, gen: Generator, output: Instruction[]): string {
+export function emitValue(node: AnnotatedNode, gen: Generator, output: Instruction[]): string {
+  if (node.kind === 'Identifier') { node.place = node.value; return node.place! }
   if (node.type === 'bool') return emitBooleanValue(node, gen, output)
   if (node.kind === 'Number' || node.kind === 'Identifier') { node.place = node.value; return node.place! }
   if (node.kind === 'Group') { node.place = emitValue(node.children[0], gen, output); node.code = [...node.children[0].code]; return node.place }
@@ -87,10 +96,14 @@ function emitBooleanValue(node: AnnotatedNode, gen: Generator, output: Instructi
   return place
 }
 
-function emitBoolean(node: AnnotatedNode, gen: Generator, output: Instruction[], yes: string, no: string) {
+export function emitBoolean(node: AnnotatedNode, gen: Generator, output: Instruction[], yes: string, no: string) {
   if (node.kind === 'Group') return emitBoolean(node.children[0], gen, output, yes, no)
   if (node.kind === 'Boolean') {
     output.push(instruction('goto', [node.value === 'true' ? yes : no]))
+    return
+  }
+  if (node.kind === 'Identifier') {
+    output.push(instruction('if', [node.value!, '==', '1', yes]), instruction('goto', [no]))
     return
   }
   if (node.kind === 'Unary' && node.value === '!') return emitBoolean(node.children[0], gen, output, no, yes)
@@ -100,7 +113,7 @@ function emitBoolean(node: AnnotatedNode, gen: Generator, output: Instruction[],
   output.push(instruction('if', [left, node.value!, right, yes]), instruction('goto', [no]))
 }
 
-function formatCode(code: Instruction[]): string {
+export function formatCode(code: Instruction[]): string {
   return code.map(item => {
     if (item.op === 'label') return `${item.label}:`
     if (item.op === 'if') return `if ${item.args[0]} ${item.args[1]} ${item.args[2]} goto ${item.args[3]}`

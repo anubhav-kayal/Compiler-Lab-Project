@@ -1,6 +1,7 @@
 import type { Diagnostic, Token } from './types'
 
 const twoChar = new Set(['&&', '||', '==', '!=', '<=', '>='])
+const keywords = new Set(['if', 'else', 'while'])
 const oneChar = new Set(['+', '-', '*', '/', '%', '!', '<', '>', '(', ')'])
 
 export function tokenize(source: string): { tokens: Token[]; diagnostics: Diagnostic[] } {
@@ -15,7 +16,8 @@ export function tokenize(source: string): { tokens: Token[]; diagnostics: Diagno
       index++
       while (index < source.length && /[A-Za-z0-9_]/.test(source[index])) index++
       const lexeme = source.slice(start, index)
-      tokens.push({ kind: lexeme === 'true' || lexeme === 'false' ? 'boolean' : 'identifier', lexeme, start, end: index })
+      const kind = lexeme === 'true' || lexeme === 'false' ? 'boolean' : keywords.has(lexeme) ? 'keyword' : 'identifier'
+      tokens.push({ kind, lexeme, start, end: index })
       continue
     }
     if (/[0-9]/.test(char)) {
@@ -31,6 +33,10 @@ export function tokenize(source: string): { tokens: Token[]; diagnostics: Diagno
     if (oneChar.has(char)) {
       const kind = char === '(' ? 'lparen' : char === ')' ? 'rparen' : 'operator'
       tokens.push({ kind, lexeme: char, start, end: index + 1 }); index++; continue
+    }
+    const punctuation = { '=': 'assign', ';': 'semicolon', '{': 'lbrace', '}': 'rbrace' } as const
+    if (char in punctuation) {
+      tokens.push({ kind: punctuation[char as keyof typeof punctuation], lexeme: char, start, end: index + 1 }); index++; continue
     }
     diagnostics.push({ message: `Unexpected character “${char}”.`, start, end: start + 1, severity: 'error' })
     index++

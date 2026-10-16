@@ -1,7 +1,8 @@
-export type ValueType = 'int' | 'bool' | 'error'
+export type ValueType = 'int' | 'bool' | 'void' | 'error'
 
 export type TokenKind =
   | 'identifier' | 'number' | 'boolean' | 'operator' | 'lparen' | 'rparen' | 'eof'
+  | 'keyword' | 'assign' | 'semicolon' | 'lbrace' | 'rbrace'
 
 export type Token = {
   kind: TokenKind
@@ -46,4 +47,6 @@ export type TranslationResult = {
   instructions: Instruction[]
   formattedCode: string
   diagnostics: Diagnostic[]
+  optimizedInstructions?: Instruction[]
+  optimizedCode?: string
 }

@@ -1,3 +1,6 @@
 export { translate } from './translator'
+export { translateProgram } from './program'
+export { optimize } from './optimize'
+export { run } from './interpret'
 export { tokenize } from './lexer'
 export type * from './types'

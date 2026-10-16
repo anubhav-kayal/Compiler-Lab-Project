@@ -13,6 +13,59 @@ export class Parser {
     return root
   }
 
+  parseProgram(): AnnotatedNode | undefined {
+    if (this.peek().kind === 'eof') return undefined
+    const statements: AnnotatedNode[] = []
+    while (this.peek().kind !== 'eof') statements.push(this.parseStatement())
+    const last = statements[statements.length - 1]
+    return this.node('Program', undefined, statements[0].start, last.end, statements)
+  }
+
+  private parseStatement(): AnnotatedNode {
+    const token = this.peek()
+    if (token.kind === 'lbrace') {
+      this.advance()
+      const body: AnnotatedNode[] = []
+      while (this.peek().kind !== 'rbrace' && this.peek().kind !== 'eof') body.push(this.parseStatement())
+      if (this.peek().kind === 'rbrace') this.advance()
+      else this.error('Expected “}”.', this.peek())
+      return this.node('Block', undefined, token.start, this.previous().end, body)
+    }
+    if (token.kind === 'keyword' && (token.lexeme === 'if' || token.lexeme === 'while')) {
+      this.advance()
+      const condition = this.parseCondition()
+      const body = this.parseStatement()
+      const children = [condition, body]
+      if (token.lexeme === 'if' && this.peek().kind === 'keyword' && this.peek().lexeme === 'else') {
+        this.advance()
+        children.push(this.parseStatement())
+      }
+      return this.node(token.lexeme === 'if' ? 'If' : 'While', undefined, token.start, children[children.length - 1].end, children)
+    }
+    if (token.kind === 'identifier' && this.tokens[this.index + 1]?.kind === 'assign') {
+      this.advance(); this.advance()
+      const value = this.parseOr()
+      if (this.peek().kind === 'semicolon') this.advance()
+      else this.error('Expected “;”.', this.peek())
+      return this.node('Assign', token.lexeme, token.start, this.previous().end, [value])
+    }
+    this.error('Expected a statement: an assignment, “if”, “while”, or “{”.', token)
+    this.advance()
+    return this.node('Error', token.lexeme, token.start, token.end)
+  }
+
+  private parseCondition(): AnnotatedNode {
+    if (this.peek().kind !== 'lparen') {
+      this.error('Expected “(” after the keyword.', this.peek())
+      return this.node('Error', undefined, this.peek().start, this.peek().end)
+    }
+    this.advance()
+    const condition = this.parseOr()
+    if (this.peek().kind === 'rparen') this.advance()
+    else this.error('Expected “)”.', this.peek())
+    return condition
+  }
+
   private parseOr(): AnnotatedNode {
     return this.leftAssoc(() => this.parseAnd(), ['||'], 'Or')
   }
